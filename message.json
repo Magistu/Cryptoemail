@@ -1,0 +1,7 @@
+{
+  "sendTo": "lut8@bk.ru",
+  "subject": "IMPORTANT!",
+  "text": "",
+  "files": ["img.png"],
+  "encryptMessage": false
+}

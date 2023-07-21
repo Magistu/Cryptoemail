@@ -1,0 +1,1 @@
+pyinstaller --onefile --icon=cryptoemail.ico --distpath dist/cryptoemail cryptoemail.py

@@ -1,0 +1,21 @@
+WHITE = "57m"
+YELLOW = "33m"
+GREEN = "32m"
+BLUE = "34m"
+CYAN = "36m"
+RED = "31m"
+MAGENTA = "35m"
+BLACK = "30m"
+DARKWHITE = "37m"
+DARKYELLOW = "33m"
+DARKGREEN = "32m"
+DARKBLUE = "34m"
+DARKCYAN = "36m"
+DARKRED = "31m"
+DARKMAGENTA = "35m"
+DARKBLACK = "30m"
+ENDC = "0m"
+
+
+def dye(string, color: str, bold=0):
+	return f"\033[{bold};{color}{string}\033[{bold};{ENDC}"
