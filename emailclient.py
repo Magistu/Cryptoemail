@@ -6,8 +6,8 @@ import sys
 
 from pwinput import pwinput
 from rsa import DecryptionError
-from smtplib import SMTP_SSL
-from imaplib import IMAP4_SSL
+from smtplib import SMTP_SSL, SMTPAuthenticationError
+from imaplib import IMAP4_SSL, IMAP4
 from email.message import Message
 from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
@@ -131,7 +131,7 @@ class EmailClient:
 	def __init__(self, user_json_path=USER_JSON):
 		self.__passwd = None
 		self.__enter_or_create_passwd()
-		user_data = self.get_or_create_user_data(user_json_path)
+		user_data = self.load_or_create_user_data(user_json_path)
 		self.email = user_data["email"]
 		self.__emailpasswd = user_data["passphrase"]
 		nbits = user_data["keySize"]
@@ -172,29 +172,43 @@ class EmailClient:
 				print("wrong password")
 			self.__passwd = passwd
 
-	def get_or_create_user_data(self, user_json_path=USER_JSON):
+	def create_user_data(self, user_json_path=USER_JSON):
+		user_data = {
+			"email": input("enter your mail.ru address: "),
+			"keySize": 4096
+		}
+		with open(user_json_path, "w") as f:
+			json.dump(user_data, f)
+		self.__enter_emailpasswd()
+		user_data["passphrase"] = self.__emailpasswd
+		return user_data
+
+	def load_or_create_user_data(self, user_json_path=USER_JSON):
 		if not os.path.exists(user_json_path):
 			user_data = {
 				"email": input("enter your mail.ru address: "),
 				"keySize": 4096
 			}
-			with open(USER_JSON, "w") as f:
+			with open(user_json_path, "w") as f:
 				json.dump(user_data, f)
 		else:
 			with open(user_json_path, "r") as f:
 				user_data = json.load(f)
-		self.__load_or_save_emailpasswd()
+		self.__load_or_enter_emailpasswd()
 		user_data["passphrase"] = self.__emailpasswd
 		return user_data
 
-	def __load_or_save_emailpasswd(self):
-		if os.path.exists(HEMAILPASSWD_PATH):
-			with open(HEMAILPASSWD_PATH, "rb") as f:
-				self.__emailpasswd = simple_decrypt(self.__passwd, IV, f.read())
-				return
+	def __enter_emailpasswd(self):
 		self.__emailpasswd = passwd_input("enter mail.ru application passphrase: ")
 		with open(HEMAILPASSWD_PATH, "wb") as f:
 			f.write(simple_encrypt(self.__passwd, IV, self.__emailpasswd))
+
+	def __load_or_enter_emailpasswd(self):
+		if not os.path.exists(HEMAILPASSWD_PATH):
+			self.__enter_emailpasswd()
+			return
+		with open(HEMAILPASSWD_PATH, "rb") as f:
+			self.__emailpasswd = simple_decrypt(self.__passwd, IV, f.read())
 
 	def gen_keys(self, nbits):
 		gen_keys(nbits, keys_folder(self.email), self.__passwd, IV)
@@ -212,11 +226,16 @@ class EmailClient:
 		return load_pub_key(keys_folder(address))
 
 	def connect(self):
-		self.smtp = SMTP_SSL(MAIL_SMTP_ADDR, MAIL_SMTP_PORT)
-		self.smtp.login(self.email, self.__emailpasswd)
-		self.imap = IMAP4_SSL(MAIL_IMAP_ADDR, MAIL_IMAP_PORT)
-		self.imap.login(self.email, self.__emailpasswd)
-
+		try:
+			self.smtp = SMTP_SSL(MAIL_SMTP_ADDR, MAIL_SMTP_PORT)
+			self.smtp.login(self.email, self.__emailpasswd)
+			self.imap = IMAP4_SSL(MAIL_IMAP_ADDR, MAIL_IMAP_PORT)
+			self.imap.login(self.email, self.__emailpasswd)
+		except (IMAP4.error, SMTPAuthenticationError):
+			print("failed to sign in")
+			self.create_user_data()
+			self.connect()
+			
 	def disconnect(self):
 		try:
 			self.smtp.quit()
