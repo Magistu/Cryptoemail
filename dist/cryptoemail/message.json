@@ -1,7 +1,0 @@
-{
-  "sendTo": "example@mail.ru",
-  "subject": "Example subject",
-  "text": "Example text",
-  "files": [],
-  "encryptMessage": true
-}
